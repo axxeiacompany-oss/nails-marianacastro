@@ -1,0 +1,239 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitive Helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedAdmin() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && (
+          request.auth.token.email == 'lyalua31@gmail.com'
+          || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        );
+    }
+
+    // Blueprint Validation Helpers
+    function isValidService(data) {
+      return data.keys().hasAll([
+          'name', 'category', 'description', 'durationMinutes',
+          'priceCents', 'imageKey', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'name', 'category', 'description', 'durationMinutes',
+          'priceCents', 'imageKey', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 80
+        && data.category is string && data.category.size() <= 40
+        && data.category in ['Alongamento', 'Manutenção', 'Banho de Gel & Blindagem', 'Nail Art & Spa']
+        && data.description is string && data.description.size() >= 5 && data.description.size() <= 300
+        && data.durationMinutes is number && data.durationMinutes >= 15 && data.durationMinutes <= 360
+        && data.priceCents is number && data.priceCents >= 0 && data.priceCents <= 500000
+        && data.imageKey is string && data.imageKey.size() >= 1 && data.imageKey.size() <= 60
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBookedSlot(data) {
+      return data.keys().hasAll([
+          'date', 'time', 'durationMinutes', 'status',
+          'appointmentId', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'date', 'time', 'durationMinutes', 'status',
+          'appointmentId', 'createdAt', 'updatedAt'
+        ])
+        && data.date is string && data.date.size() == 10 && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.time is string && data.time.size() == 5 && data.time.matches('^[0-9]{2}:[0-9]{2}$')
+        && data.durationMinutes is number && data.durationMinutes >= 15 && data.durationMinutes <= 360
+        && data.status is string && data.status.size() <= 20
+        && data.status in ['pending', 'confirmed', 'blocked', 'cancelled']
+        && data.appointmentId is string && isValidId(data.appointmentId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAppointment(data) {
+      return data.keys().hasAll([
+          'protocolCode', 'clientName', 'clientPhone', 'clientInstagram',
+          'serviceId', 'serviceName', 'serviceCategory', 'priceCents',
+          'durationMinutes', 'nailShape', 'nailFinish', 'date', 'time',
+          'slotId', 'notes', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'protocolCode', 'clientName', 'clientPhone', 'clientInstagram',
+          'serviceId', 'serviceName', 'serviceCategory', 'priceCents',
+          'durationMinutes', 'nailShape', 'nailFinish', 'date', 'time',
+          'slotId', 'notes', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.protocolCode is string && data.protocolCode.size() == 9 && data.protocolCode.matches('^MC-[A-Z0-9]{6}$')
+        && data.clientName is string && data.clientName.size() >= 2 && data.clientName.size() <= 80
+        && data.clientPhone is string && data.clientPhone.size() >= 8 && data.clientPhone.size() <= 25
+        && data.clientInstagram is string && data.clientInstagram.size() <= 50
+        && data.serviceId is string && isValidId(data.serviceId)
+        && data.serviceName is string && data.serviceName.size() >= 2 && data.serviceName.size() <= 80
+        && data.serviceCategory is string && data.serviceCategory.size() >= 2 && data.serviceCategory.size() <= 40
+        && data.priceCents is number && data.priceCents >= 0 && data.priceCents <= 500000
+        && data.durationMinutes is number && data.durationMinutes >= 15 && data.durationMinutes <= 360
+        && data.nailShape is string && data.nailShape.size() <= 20
+        && data.nailShape in ['Amendoada', 'Quadrada', 'Bailarina', 'Stiletto', 'Natural']
+        && data.nailFinish is string && data.nailFinish.size() <= 50
+        && data.nailFinish in [
+          'Francesa Reversa / Sorriso',
+          'Encapsulada com Flores / Ouro',
+          'Cat-Eye / Cromado Prata',
+          'Baby Boomer & Glitter',
+          'Nude Translúcido Natural'
+        ]
+        && data.date is string && data.date.size() == 10 && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.time is string && data.time.size() == 5 && data.time.matches('^[0-9]{2}:[0-9]{2}$')
+        && data.slotId is string && isValidId(data.slotId)
+        && data.notes is string && data.notes.size() <= 250
+        && data.status is string && data.status.size() <= 20
+        && data.status in ['pending', 'confirmed', 'completed', 'cancelled']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['email', 'role', 'createdAt'])
+        && data.keys().hasOnly(['email', 'role', 'createdAt'])
+        && data.email is string && data.email.size() >= 5 && data.email.size() <= 120
+        && data.role is string && data.role.size() <= 20 && data.role in ['owner', 'admin']
+        && data.createdAt is timestamp;
+    }
+
+    // 1. Services Catalog
+    match /services/{serviceId} {
+      allow get: if isValidId(serviceId);
+      allow list: if existing().active == true || isVerifiedAdmin();
+      allow create: if isVerifiedAdmin()
+        && isValidId(serviceId)
+        && isValidService(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedAdmin()
+        && isValidId(serviceId)
+        && isValidService(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'category', 'description', 'durationMinutes',
+          'priceCents', 'imageKey', 'active', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedAdmin() && isValidId(serviceId);
+    }
+
+    // 2. Booked Slots (Public non-PII availability schedule)
+    match /bookedSlots/{slotId} {
+      allow get: if isValidId(slotId);
+      allow list: if existing().status in ['pending', 'confirmed', 'blocked', 'cancelled'];
+      allow create: if isValidId(slotId)
+        && isValidBookedSlot(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          // Public client creating a pending booking slot atomically with appointment
+          (
+            incoming().status == 'pending'
+            && existsAfter(/databases/$(database)/documents/appointments/$(incoming().appointmentId))
+          )
+          || isVerifiedAdmin()
+        );
+      allow update: if isValidId(slotId)
+        && isValidBookedSlot(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().date == existing().date
+        && incoming().time == existing().time
+        && incoming().appointmentId == existing().appointmentId
+        && incoming().updatedAt == request.time
+        && (
+          // Public client cancelling their pending slot atomically with appointment cancellation
+          (
+            existing().status == 'pending'
+            && incoming().status == 'cancelled'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+          || (
+            isVerifiedAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'durationMinutes', 'updatedAt'])
+          )
+        );
+      allow delete: if isVerifiedAdmin() && isValidId(slotId);
+    }
+
+    // 3. Appointments (Contains Client PII - Split Collection Pattern)
+    match /appointments/{appointmentId} {
+      // Individual client can view their specific receipt by exact appointmentId; only Admin can list
+      allow get: if isValidId(appointmentId);
+      allow list: if isVerifiedAdmin() && existing().status in ['pending', 'confirmed', 'completed', 'cancelled'];
+      allow create: if isValidId(appointmentId)
+        && isValidAppointment(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          (
+            incoming().status == 'pending'
+            && existsAfter(/databases/$(database)/documents/bookedSlots/$(incoming().slotId))
+          )
+          || isVerifiedAdmin()
+        );
+      allow update: if isValidId(appointmentId)
+        && isValidAppointment(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().protocolCode == existing().protocolCode
+        && incoming().serviceId == existing().serviceId
+        && incoming().slotId == existing().slotId
+        && incoming().updatedAt == request.time
+        && (
+          // Action 1: Client cancels their own pending appointment using exact receipt ID
+          (
+            existing().status == 'pending'
+            && incoming().status == 'cancelled'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+          // Action 2: Verified Admin updates status, schedule, or notes
+          || (
+            isVerifiedAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'date', 'time', 'notes', 'nailShape', 'nailFinish',
+              'clientName', 'clientPhone', 'clientInstagram', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedAdmin() && isValidId(appointmentId);
+    }
+
+    // 4. Admins Directory
+    match /admins/{adminId} {
+      allow get: if isVerifiedAdmin() && isValidId(adminId);
+      allow list: if isVerifiedAdmin() && existing().role in ['owner', 'admin'];
+      allow create: if isVerifiedAdmin()
+        && isValidId(adminId)
+        && isValidAdminUser(incoming())
+        && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+  }
+}

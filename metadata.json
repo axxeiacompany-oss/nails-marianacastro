@@ -1,0 +1,6 @@
+{
+  "name": "nails.marianacastro — Atelier & Agendamento Online",
+  "description": "Sistema de agendamento online e painel de gestão elegante para o estúdio nails.marianacastro, especializado em alongamentos em gel, francesa reversa, encapsuladas e nail art.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
