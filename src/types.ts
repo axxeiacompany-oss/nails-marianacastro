@@ -58,8 +58,8 @@ export interface AppointmentRecord {
   slotId: string;
   notes: string;
   status: AppointmentStatus;
-  createdAt?: unknown;
-  updatedAt?: unknown;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export const STUDIO_IMAGES: Record<string, string> = {
@@ -221,4 +221,104 @@ export function generateProtocolCode(): string {
     suffix += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return `MC-${suffix}`;
+}
+
+export function getInitialDemoData(firstOpenDay: string, secondOpenDay: string): {
+  appointments: AppointmentRecord[];
+  slots: BookedSlotRecord[];
+} {
+  const appointments: AppointmentRecord[] = [
+    {
+      id: 'MC-8F4K2A',
+      protocolCode: 'MC-8F4K2A',
+      clientName: 'Beatriz Alencar',
+      clientPhone: '(11) 99812-4401',
+      clientInstagram: '@bia.alencar',
+      serviceId: 'alongamento-fibra-francesa',
+      serviceName: 'Alongamento em Fibra — Francesa Reversa',
+      serviceCategory: 'Alongamento',
+      priceCents: 18500,
+      durationMinutes: 150,
+      nailShape: 'Amendoada',
+      nailFinish: 'Francesa Reversa / Sorriso',
+      date: firstOpenDay,
+      time: '09:00',
+      slotId: `slot_${firstOpenDay}_0900`,
+      notes: 'Gosto do leito rosado bem natural e ponta sorriso fina.',
+      status: 'confirmed',
+    },
+    {
+      id: 'MC-3M9P7X',
+      protocolCode: 'MC-3M9P7X',
+      clientName: 'Fernanda Vasconcelos',
+      clientPhone: '(11) 99430-8821',
+      clientInstagram: '@fevasconcelos',
+      serviceId: 'alongamento-encapsulado-botanico',
+      serviceName: 'Alongamento Encapsulado — Flores Secas & Folha de Ouro',
+      serviceCategory: 'Alongamento',
+      priceCents: 21000,
+      durationMinutes: 165,
+      nailShape: 'Quadrada',
+      nailFinish: 'Encapsulada com Flores / Ouro',
+      date: firstOpenDay,
+      time: '14:30',
+      slotId: `slot_${firstOpenDay}_1430`,
+      notes: 'Quero colocar florzinha seca no anelar e folha de ouro.',
+      status: 'pending',
+    },
+    {
+      id: 'MC-6R2W9Q',
+      protocolCode: 'MC-6R2W9Q',
+      clientName: 'Camila Rocha',
+      clientPhone: '(11) 98761-1092',
+      clientInstagram: '@camilarocha_',
+      serviceId: 'banho-gel-cat-eye-prata',
+      serviceName: 'Banho de Gel & Efeito Cat-Eye Magnético Prata',
+      serviceCategory: 'Banho de Gel & Blindagem',
+      priceCents: 14500,
+      durationMinutes: 105,
+      nailShape: 'Amendoada',
+      nailFinish: 'Cat-Eye / Cromado Prata',
+      date: secondOpenDay,
+      time: '10:30',
+      slotId: `slot_${secondOpenDay}_1030`,
+      notes: 'Primeira vez fazendo banho de gel.',
+      status: 'confirmed',
+    },
+    {
+      id: 'MC-5L7N4V',
+      protocolCode: 'MC-5L7N4V',
+      clientName: 'Larissa Monteiro',
+      clientPhone: '(11) 99105-6734',
+      clientInstagram: '@larimonteiro',
+      serviceId: 'manutencao-estrutural-gel',
+      serviceName: 'Manutenção de Alongamento (Até 25 dias)',
+      serviceCategory: 'Manutenção',
+      priceCents: 13500,
+      durationMinutes: 120,
+      nailShape: 'Bailarina',
+      nailFinish: 'Baby Boomer & Glitter',
+      date: secondOpenDay,
+      time: '16:00',
+      slotId: `slot_${secondOpenDay}_1600`,
+      notes: 'Manutenção de 21 dias, todas as unhas intactas.',
+      status: 'completed',
+    },
+  ];
+
+  const slots: BookedSlotRecord[] = appointments.map((a) => ({
+    id: a.slotId,
+    date: a.date,
+    time: a.time,
+    durationMinutes: a.durationMinutes,
+    status:
+      a.status === 'cancelled'
+        ? 'cancelled'
+        : a.status === 'confirmed' || a.status === 'completed'
+        ? 'confirmed'
+        : 'pending',
+    appointmentId: a.id,
+  }));
+
+  return { appointments, slots };
 }

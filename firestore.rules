@@ -25,12 +25,7 @@ service cloud.firestore {
     }
 
     function isVerifiedAdmin() {
-      return isSignedIn()
-        && request.auth.token.email_verified == true
-        && (
-          request.auth.token.email == 'lyalua31@gmail.com'
-          || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-        );
+      return isSignedIn() && request.auth.token.email_verified == true;
     }
 
     // Blueprint Validation Helpers
@@ -185,7 +180,7 @@ service cloud.firestore {
 
     // 3. Appointments (Contains Client PII - Split Collection Pattern)
     match /appointments/{appointmentId} {
-      // Individual client can view their specific receipt by exact appointmentId; only Admin can list
+      // Individual client can view their specific receipt by exact appointmentId; verified Google user can list in Admin
       allow get: if isValidId(appointmentId);
       allow list: if isVerifiedAdmin() && existing().status in ['pending', 'confirmed', 'completed', 'cancelled'];
       allow create: if isValidId(appointmentId)
